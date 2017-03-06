@@ -76,7 +76,7 @@ if __name__ == '__main__':
  
     r = StrictRedis(host=s.REDIS_HOST, port=s.REDIS_PORT)
     try:
-        if self.r.ping():
+        if r.ping():
             print "Redis connected."
     except ConnectionError:
         "Error: Redis server not available."
