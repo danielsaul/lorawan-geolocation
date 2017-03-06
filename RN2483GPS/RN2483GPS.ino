@@ -76,14 +76,13 @@ void loop() {
   while(fx != 3 && fx != 2 ){ 
     Serial.println("Getting GPS...");
     b = getLocation(&msg.lat, &msg.lon, &msg.alt);
-    delay(10);
+    delay(1);
     b = gps_get_time(&msg.hour, &msg.mins, &msg.secs);
-    delay(10);
+    delay(1);
     b = gps_check_lock(&fx, &msg.sats);
-    delay(10);
+    delay(1);
+    Serial.println(msg.sats);
   }
-
-  led_on();
 
   Serial.print("Hr: ");
   Serial.println(msg.hour);
@@ -99,12 +98,13 @@ void loop() {
   Serial.println(msg.alt);
   Serial.print("Sats: ");
   Serial.println(msg.sats);
+  Serial.print("Fix: ");
+  Serial.println(fx);
+
 
   Serial.println("TXing...");
 
-  //myLora.txBytes((unsigned char*) &msg, sizeof(msg));
-
-  led_off();
+  myLora.txBytes((unsigned char*) &msg, sizeof(msg));
 
   delay(10000);
 }
