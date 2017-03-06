@@ -1,0 +1,4 @@
+LOGIN_EMAIL = ''
+LOGIN_PASSWORD = ''
+REDIS_HOST = 'localhost'
+REDIS_PORT = 6379
