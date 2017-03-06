@@ -15,6 +15,7 @@ from base64 import b64encode
 
 @dispatcher.add_method
 def uplink(**kwargs):
+    print "uplink"
     with open('uplink.json', 'a') as f:
         json.dump(kwargs, f)
         f.write("\n")
@@ -22,6 +23,7 @@ def uplink(**kwargs):
 
 @dispatcher.add_method
 def post_uplink(**kwargs):
+    print "post_uplink"
     with open('post_uplink.json', 'a') as f:
         json.dump(kwargs, f)
         f.write("\n")
@@ -29,8 +31,9 @@ def post_uplink(**kwargs):
 
 @dispatcher.add_method
 def downlink(**kwargs):
-    reply = { "payload": b64encode("ACK") }
-    return reply
+#    reply = { "payload": b64encode("ACK") }
+#    return reply
+    return
 
 @Request.application
 def application(request):
