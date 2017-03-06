@@ -1,1 +1,0 @@
-from .thingserver import app
