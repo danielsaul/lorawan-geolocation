@@ -8,8 +8,13 @@
 
 #include <rn2xx3.h>
 #include <SoftwareSerial.h>
-
+#include <EEPROM.h>
 #include "gps.h"
+
+#define EEPROM_LOW_BYTE 0
+#define EEPROM_HIGH_BYTE 1
+
+#define TX_COUNT 1
 
 const char DEVICE_ADDRESS[]             = "287386B4";
 const char APPLICATION_SESSION_KEY[]    = "97A1196E70F5B77C3E058B9E4884D55C";
@@ -20,19 +25,20 @@ SoftwareSerial loraSerial(5, 4);
 rn2xx3 myLora(loraSerial);
 
 struct payload {
-  
-  uint8_t hour;
-  uint8_t mins;
-  uint8_t secs;
-
+ 
   int32_t lat;
   int32_t lon;
   int32_t alt; 
 
+  uint16_t i;
+
+  uint8_t hour;
+  uint8_t mins;
+  uint8_t secs;
+
   uint8_t sats;
 
 };
-
 
 void setup() {
 
@@ -45,6 +51,9 @@ void setup() {
   loraSerial.begin(57600);
   delay(1000);
   Serial.println("Startup");
+
+  // Start EEPROM
+  EEPROM.begin(4);
 
   // Setup RN2483 radio
   initialize_radio();
@@ -84,6 +93,11 @@ void loop() {
     Serial.println(msg.sats);
   }
 
+  counter_inc();
+  msg.i = counter_get();
+
+  Serial.print("i: ");
+  Serial.println(msg.i);
   Serial.print("Hr: ");
   Serial.println(msg.hour);
   Serial.print("Mn: ");
@@ -104,8 +118,11 @@ void loop() {
 
   Serial.println("TXing...");
 
-  myLora.txBytes((unsigned char*) &msg, sizeof(msg));
-
+  for(int i=0;i<TX_COUNT;i++){
+    myLora.txBytes((unsigned char*) &msg, sizeof(msg));
+    delay(10);
+  }
+  
   delay(10000);
 }
 
@@ -146,4 +163,22 @@ void led_on()
 void led_off()
 {
   digitalWrite(LED_BUILTIN, 0);
+}
+
+uint16_t counter_get()
+{
+    byte lowByte = EEPROM.read(EEPROM_LOW_BYTE);
+    byte highByte = EEPROM.read(EEPROM_HIGH_BYTE);
+    return ((highByte << 8) | lowByte);
+}
+
+void counter_set(uint16_t new_counter)
+{
+    EEPROM.write(EEPROM_LOW_BYTE, (byte) (0xFF & new_counter));
+    EEPROM.write(EEPROM_HIGH_BYTE, (byte) (new_counter >> 8));
+}
+
+void counter_inc()
+{
+    counter_set(counter_get() + 1);
 }
