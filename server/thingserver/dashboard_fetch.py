@@ -42,7 +42,9 @@ if __name__ == '__main__':
             print "Redis connected."
     except ConnectionError:
         "Error: Redis server not available."
-    
+   
+    r.select(s.REDIS_DB)
+
     login(session)
     
     while True:

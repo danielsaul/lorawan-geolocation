@@ -87,6 +87,8 @@ if __name__ == '__main__':
     except ConnectionError:
         "Error: Redis server not available."
 
+    r.select(s.REDIS_DB)
+
     msg = r.get('last_msg')
     if not msg:
         last_msg = None
