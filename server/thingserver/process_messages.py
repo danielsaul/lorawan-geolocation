@@ -10,25 +10,26 @@ import settings as s
 
 import json
 import struct
+import base64
+import copy
 
-last_msg = None
 r = None
 
-
-def process(msg):
+def process(msg, last_msg):
     data = json.loads(msg)
     new_last_msg = None
-    
+  
     for item in data:
-
-        if not new_last_msg:
-            new_last_msg = item
+       
+        if new_last_msg is None:
+            new_last_msg = copy.deepcopy(item)
         
-        if last_msg == item:
+        if last_msg==item:
+            print "Break"
             break
         
         try:
-            payload = unpack_payload( item['payload'].decode('hex') )
+            payload = unpack_payload( base64.b16decode(item['payload'], True) )
             gateway = item['gw_gps']
             gateway['addr'] = item['gw_addr']
             gateway['time'] = item['gateway_time']
@@ -45,17 +46,16 @@ def process(msg):
                 r.rpush('packet_list', payload['i'])
 
             print r.get('packet_%d' % payload['i'])
-        
+
         except:
             continue
 
-
-    update_last_msg(new_last_msg)
-        
-def update_last_msg(item):
-    last_msg = item
-    msg = json.dumps(item)
+    msg = json.dumps(new_last_msg)
     r.set('last_msg', msg)
+
+    return new_last_msg
+
+   
 
 def unpack_payload(packed):
     # Payload Structure
@@ -98,4 +98,4 @@ if __name__ == '__main__':
 
     for message in p.listen():
         if message['type'] == 'message':
-            process(message['data'])
+            last_msg = process(message['data'], last_msg)
