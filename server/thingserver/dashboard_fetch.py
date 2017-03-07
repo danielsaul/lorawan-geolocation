@@ -36,15 +36,13 @@ def loop(session,r):
 if __name__ == '__main__':
     session = requests.Session()
     
-    r = StrictRedis(host=s.REDIS_HOST, port=s.REDIS_PORT)
+    r = StrictRedis(host=s.REDIS_HOST, port=s.REDIS_PORT, db=s.REDIS_DB)
     try:
         if r.ping():
             print "Redis connected."
     except ConnectionError:
         "Error: Redis server not available."
    
-    r.select(s.REDIS_DB)
-
     login(session)
     
     while True:
