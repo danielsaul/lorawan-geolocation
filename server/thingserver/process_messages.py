@@ -25,26 +25,32 @@ def process(msg):
             new_last_msg = item
         
         if last_msg == item:
-            update_last_msg(new_last_msg)
             break
-
-        payload = unpack_payload( item['payload'].decode('hex') )
-        gateway = item['gw_gps']
-        gateway['addr'] = item['gw_addr']
-        gateway['time'] = item['gw_time']
-        gateway['rssi'] = item['rssi']
-
-        saved_item = r.get('packet_%d' % payload['i'])
-        if saved_item:
-            saved_item = json.loads(saved_item)
-            saved_item['gateways'].append(gateway)
-            r.set('packet_%d' % payload['i'], json.dumps(saved_item))
-        else:
-            new_item = {'payload': payload, 'gateways':[gateway]}
-            r.set('packet_%d' % payload['i'], json.dumps(new_item))
         
-        print r.get('packet_%d' % payload['i'])
+        try:
+            payload = unpack_payload( item['payload'].decode('hex') )
+            gateway = item['gw_gps']
+            gateway['addr'] = item['gw_addr']
+            gateway['time'] = item['gateway_time']
+            gateway['rssi'] = item['rssi']
 
+            saved_item = r.get('packet_%d' % payload['i'])
+            if saved_item:
+                saved_item = json.loads(saved_item)
+                saved_item['gateways'].append(gateway)
+                r.set('packet_%d' % payload['i'], json.dumps(saved_item))
+            else:
+                new_item = {'payload': payload, 'gateways':[gateway]}
+                r.set('packet_%d' % payload['i'], json.dumps(new_item))
+                r.rpush('packet_list', payload['i'])
+
+            print r.get('packet_%d' % payload['i'])
+        
+        except:
+            continue
+
+
+    update_last_msg(new_last_msg)
         
 def update_last_msg(item):
     last_msg = item
