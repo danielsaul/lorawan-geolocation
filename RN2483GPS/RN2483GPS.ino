@@ -15,6 +15,7 @@
 #define EEPROM_HIGH_BYTE 1
 
 #define TX_COUNT 1
+#define WAIT_TIME 5000
 
 const char DEVICE_ADDRESS[]             = "287386B4";
 const char APPLICATION_SESSION_KEY[]    = "97A1196E70F5B77C3E058B9E4884D55C";
@@ -123,7 +124,7 @@ void loop() {
     delay(10);
   }
   
-  delay(10000);
+  delay(WAIT_TIME);
 }
 
 
