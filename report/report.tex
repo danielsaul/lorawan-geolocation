@@ -8,6 +8,8 @@
 \documentclass[a4paper]{report}
 \usepackage[left=1.0in, right=1.0in, top=1.5in, bottom=1.5in]{geometry}
 
+\setlength{\parskip}{1em}
+
 %\usepackage{savetrees}
 
 % This packages permits using $ \therefore $
@@ -75,7 +77,7 @@
 
 \chapter{Implementation}
 
-  The implemented test setup consisted of a simple custom node, the existing Things Connected LoRaWAN infrastructure across London and custom server-side software. The node transmits its real location as calculated by the on-board GPS which is received by LoRaWAN gateways and uploaded to the server. These real coordinates of the transmission location can then be later compared to the estimated location by the multilateration algorithm.
+  This chapter will describe the implemented test setup, ranging from the hardware through to the software and data gathering. The setup consists of a simple custom node, the existing Things Connected LoRaWAN infrastructure across London and custom server-side software. The node transmits its real location as calculated by the on-board GPS which is received by LoRaWAN gateways and uploaded to the server. These real coordinates of the transmission location can then be later compared to the estimated location by the multilateration algorithm.
 
 
   \section{Node Hardware}
@@ -87,9 +89,9 @@
     \label{fig:node}
     \end{figure}
 
-    A simple node was designed, built and programmed in C, consisting of an ESP8266 microcontroller, u-blox MAX8C GPS receiver and a Microchip RN2483 LoRa transceiver, as shown in figure \ref{fig:node}. The GPS receiver used a basic chip antenna whilst the LoRA transceiver used an 868MHz 'rubber ducky' antenna. The specific hardware is not particularly important however, but rather the functionality is.
+    A simple node was designed, built and programmed in C, consisting of an ESP8266 microcontroller, u-blox MAX8C GPS receiver and a Microchip RN2483 LoRa transceiver, as shown in figure \ref{fig:node}. The RN2483 was chosen as it implements the full LoRaWAN stack on-board, reducing the complexity of the microcontroller code. The GPS receiver used a basic chip antenna whilst the LoRA transceiver used an 868MHz 'rubber ducky' antenna. The specific hardware is not particularly important however, but rather the functionality is.
 
-    The GPS receiver was configured to pedestrian mode since the primary mode of testing would be a person walking with the node. The LoRaWAN configuration parameters (device address, network session key and application session key) were hard-coded into the microcontroller firmware.
+    The GPS receiver was configured to pedestrian mode since the primary method of testing would be a person walking with the node, as opposed to a flight or high velocity mode. The LoRaWAN configuration parameters (device address, network session key and application session key) were hard-coded into the microcontroller firmware.
 
     The microcontroller follows a basic loop. In each iteration, set at roughly every 10 seconds, the microcontroller requests data from the GPS (latitude, longitude, altitude, number of satellites and time) and loads it into a struct datatype. A counter in the microcontroller's flash memory, such that it is persistent across power cycling, is incremented and also added to the struct. The entire 20 byte struct is then transmitted as a binary blob payload by the LoRa transceiver. Other functionality allowing transmission on a button press and short bursts of continuous data transmission was also implemented but not ultimately used.
 
@@ -110,8 +112,6 @@
     Therefore, a workaround was found by using the unofficial API running the Things Connected dashboard. The last 20 received packets from each gateway are available from a 'messages' endpoint. By continuously polling this endpoint at a rate faster than that at which the node is transmitting, all data from all gateways can be collected. Figure \ref{fig:server} shows a simplified system diagram for the LoRaWAN and server-side systems. A python script to perform an HTTP POST request to login and continually fetch data from the unofficial API through HTTP GET requests is found in appendix \ref{ap:serverfetch}. The fetched data is published to a Redis Pub/Sub channel which is subscribed to by another script, found in appendix \ref{ap:serverprocess}, where the data is processed. The payload of each packet is decoded and the binary blob unpacked into the constituent pieces of data. If the packet payload already exists in the Redis database, the details of the new gateway receiving the packet is appended to the gateway list. If it doesn't already exist, the entire packet data is freshly inserted into the database.
 
     It is at this point in the system that any final positioning algorithm would ultimately be included. Instead, another python script, in appendix \ref{ap:serverexport}, allows all the received data to be exported from the database to a JSON file for analysis and testing.
-
-  \section{Localization Software}
 
 \chapter{Data Analysis \& Results}
 
