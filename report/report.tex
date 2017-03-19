@@ -77,7 +77,9 @@
 
   The implemented test setup consisted of a simple custom node, the existing Things Connected LoRaWAN infrastructure across London and custom server-side software. The node transmits its real location as calculated by the on-board GPS which is received by LoRaWAN gateways and uploaded to the server. These real coordinates of the transmission location can then be later compared to the estimated location by the multilateration algorithm.
 
+
   \section{Node Hardware}
+
     \begin{figure}
     \centering
     \includegraphics[width=12cm]{figures/node.jpeg}
@@ -91,9 +93,23 @@
 
     The microcontroller follows a basic loop. In each iteration, set at roughly every 10 seconds, the microcontroller requests data from the GPS (latitude, longitude, altitude, number of satellites and time) and loads it into a struct datatype. A counter in the microcontroller's flash memory, such that it is persistent across power cycling, is incremented and also added to the struct. The entire 20 byte struct is then transmitted as a binary blob payload by the LoRa transceiver. Other functionality allowing transmission on a button press and short bursts of continuous data transmission was also implemented but not ultimately used.
 
+    The main file of the node firmware can be seen in appendix \ref{ap:nodefirmware}.
 
 
   \section{Server-side Software}
+
+    \begin{figure}
+    \centering
+    \includegraphics[width=12cm]{figures/server.jpeg}
+    \caption{LoRaWAN to Server Diagram}
+    \label{fig:server}
+    \end{figure}
+
+    When a gateway receives a packet from a node, it uploads it to the network server. The data can then be passed by the network server over an HTTP connection to the relevant application server, if the application server has implemented the necessary JSON-RPC methods \cite{EverynetAPI}. A python script to be run on a public server with open port 8080 is found in appendix \ref{ap:servereverynet} and implements the 'uplink' and 'post\_uplink' methods. The 'uplink' method provides data as soon as one gateway has received a packet whilst the 'post\_uplink' method should provide data on all receiving gateways a few seconds later. Unfortunately after testing, it was found that this latter method is not functional and that therefore obtaining details on all gateways is not possible this way. Hopefully it will be in the future.
+
+    Therefore, a workaround was found by using the unofficial API running the Things Connected dashboard. The last 20 received packets from each gateway are available from a 'messages' endpoint. By continuously polling this endpoint at a rate faster than that at which the node is transmitting, all data from all gateways can be collected. Figure \ref{fig:server} shows a simplified system diagram for the LoRaWAN and server-side systems. A python script to perform an HTTP POST request to login and continually fetch data from the unofficial API through HTTP GET requests is found in appendix \ref{ap:serverfetch}. The fetched data is published to a Redis Pub/Sub channel which is subscribed to by another script, found in appendix \ref{ap:serverprocess}, where the data is processed. The payload of each packet is decoded and the binary blob unpacked into the constituent pieces of data. If the packet payload already exists in the Redis database, the details of the new gateway receiving the packet is appended to the gateway list. If it doesn't already exist, the entire packet data is freshly inserted into the database.
+
+    It is at this point in the system that any final positioning algorithm would ultimately be included. Instead, another python script, in appendix \ref{ap:serverexport}, allows all the received data to be exported from the database to a JSON file for analysis and testing.
 
   \section{Localization Software}
 
@@ -152,7 +168,19 @@
       \label{fig:myt}
       \end{table}
 
+
+% Bibliography
 \bibliographystyle{unsrt}
 \bibliography{references}
+
+% Appendix
+\appendix
+\chapter{Node Firmware} \label{ap:nodefirmware}
+
+\chapter{Server-Side Software}
+  \section{Python Everynet API Script} \label{ap:servereverynet}
+  \section{Python Fetch Script} \label{ap:serverfetch}
+  \section{Python Processing Script} \label{ap:serverprocess}
+  \section{Python Export Script} \label{ap:serverexport}
 
 \end{document}
