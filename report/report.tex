@@ -1,0 +1,158 @@
+% ----------------------------------------
+% Geolocation for the Internet of Things using LoRaWAN
+% Third Year Project
+% Daniel Saul - 2017
+% daniel.saul.14@ucl.ac.uk
+% ----------------------------------------
+% Set up the document class for an article
+\documentclass[a4paper]{report}
+\usepackage[left=1.0in, right=1.0in, top=1.5in, bottom=1.5in]{geometry}
+
+%\usepackage{savetrees}
+
+% This packages permits using $ \therefore $
+\usepackage{amssymb}
+\usepackage{graphicx}
+
+% This package allows the use of $ \text{} $
+\usepackage{amsmath}
+
+% The document title and author
+\title{Multilateration based system for localization of nodes with LoRaWAN}
+\author{Daniel Saul\\University College London\\ \\Supervisor: Dr Miguel Rio}
+
+% Document header
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhead[R]{\thepage}
+\renewcommand{\chaptermark}[1]{%
+    \markboth{\MakeUppercase{%
+    \chaptername\ \thechapter.%
+    \ #1}}{}}
+\fancyhead[L]{\leftmark}
+\renewcommand{\headrulewidth}{0pt}
+
+
+% Begin the document
+\begin{document}
+    \maketitle
+
+% Insert the abstract for the document here
+\pagestyle{fancy}
+
+\begin{abstract}
+    I wish I were an abstract.
+\end{abstract}
+
+\tableofcontents
+
+
+\chapter{Introduction}
+
+  The Internet of Things (IoT) is one of the most hyped of technology buzzwords at the moment but the term was coined as long ago as 1999 by Kevin Ashton. Back then, all data on the internet was generated or uploaded by humans, whether text, images or information. But Ashton envisioned a future of computer systems generating and collating data on their own, with little to no input from us. Today we are in the situation where
+
+  \section{Low Power Wide Area Networks}
+
+  \section{LoRaWAN}
+    \subsection{Things Connected}
+
+  \section{Motivations}
+
+  \section{Project Outline}
+
+\chapter{Localization}
+
+  \section{Received Signal Strength}
+
+  \section{Angle of Arrival}
+
+  \section{Time of Arrival}
+
+  \section{Time Difference of Arrival}
+    \subsection{TDOA Equations}
+    \subsection{Hyperbolic Solver Algorithms}
+    \subsection{Problems}
+
+\chapter{Implementation}
+
+  The implemented test setup consisted of a simple custom node, the existing Things Connected LoRaWAN infrastructure across London and custom server-side software. The node transmits its real location as calculated by the on-board GPS which is received by LoRaWAN gateways and uploaded to the server. These real coordinates of the transmission location can then be later compared to the estimated location by the multilateration algorithm.
+
+  \section{Node Hardware}
+    \begin{figure}
+    \centering
+    \includegraphics[width=12cm]{figures/node.jpeg}
+    \caption{Node Diagram}
+    \label{fig:node}
+    \end{figure}
+
+    A simple node was designed, built and programmed in C, consisting of an ESP8266 microcontroller, u-blox MAX8C GPS receiver and a Microchip RN2483 LoRa transceiver, as shown in figure \ref{fig:node}. The GPS receiver used a basic chip antenna whilst the LoRA transceiver used an 868MHz 'rubber ducky' antenna. The specific hardware is not particularly important however, but rather the functionality is.
+
+    The GPS receiver was configured to pedestrian mode since the primary mode of testing would be a person walking with the node. The LoRaWAN configuration parameters (device address, network session key and application session key) were hard-coded into the microcontroller firmware.
+
+    The microcontroller follows a basic loop. In each iteration, set at roughly every 10 seconds, the microcontroller requests data from the GPS (latitude, longitude, altitude, number of satellites and time) and loads it into a struct datatype. A counter in the microcontroller's flash memory, such that it is persistent across power cycling, is incremented and also added to the struct. The entire 20 byte struct is then transmitted as a binary blob payload by the LoRa transceiver. Other functionality allowing transmission on a button press and short bursts of continuous data transmission was also implemented but not ultimately used.
+
+
+
+  \section{Server-side Software}
+
+  \section{Localization Software}
+
+\chapter{Data Analysis \& Results}
+
+\chapter{Conclusion}
+
+
+
+
+% Example Chapter for Stuff
+\chapter{Example Chapter}
+
+  \section{Aims}
+  I aim to do things, as shown in equation (\ref{eq:myeq}). I will show how to do this in Section \ref{app}.
+
+  \begin{equation}
+  \label{eq:myeq}
+  f(x) = \dot{x} + B u(t) + C x(x)
+  \end{equation}
+
+
+  \section{Apparatus}
+  \label{app}
+
+  	50\% of my study.
+
+      A diagram of how to set up the apparatus is shown in figure \ref{fig:app}.
+
+      \begin{figure}
+      \centering
+      %\includegraphics[height=5cm]{blank}
+      \caption{Apparatus setup}
+      \label{fig:app}
+      \end{figure}
+
+  \section{Observations}
+
+  %This was demonstrated in \cite{Bonfils2014}.
+
+  \section{Discussion}
+
+      These results can be seen in table \ref{fig:myt}.
+
+      \begin{table}
+      \begin{center}
+      \caption{Predicted and measured beam deflections}
+      \begin{tabular}{|c|c|c|c|}
+  	\hline
+  	Thing & thing & thing & thing \\
+  	\hline
+  	Another & another & another & another \\
+  	\hline
+      \end{tabular}
+      \end{center}
+      \label{fig:myt}
+      \end{table}
+
+\bibliographystyle{unsrt}
+\bibliography{references}
+
+\end{document}
