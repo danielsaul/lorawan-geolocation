@@ -26,7 +26,7 @@
 % Document header
 \usepackage{fancyhdr}
 \pagestyle{fancy}
-\fancyhead[R]{\thepage}
+\fancyhead[R]{}
 \renewcommand{\chaptermark}[1]{%
     \markboth{\MakeUppercase{%
     \chaptername\ \thechapter.%
@@ -113,9 +113,54 @@
 
     It is at this point in the system that any final positioning algorithm would ultimately be included. Instead, another python script, in appendix \ref{ap:serverexport}, allows all the received data to be exported from the database to a JSON file for analysis and testing.
 
+
+
 \chapter{Data Analysis \& Results}
 
+  In this chapter, the gathered data and the various transformations, algorithms and analytics carried out will be presented alongside the final positioning errors obtained.
+
+  \section{Gathered Data}
+
+    The GPS node was taken for a walk through central London, through both areas with a high number and low number of gateways. Table \ref{tab:gatewaynums} shows the number of gateways that each packet was received by, with 648 packets received in total by 8 different unique gateways. It can be seen that only about 25\% of packets were received by 3 or more gateways, with three gateways being the minimum requirement to estimate a 2-dimensional position.
+
+    Figure \ref{fig:datamap} provides a geographical visualization of the data. The location of each gateway that received a packet is shown in blue, the true location of packets received by less than 3 gateways are shown in red and the true location of packets received by 3 or more gateways are shown in green. With a cursory glance, it can be seen that generally more packets are received by higher numbers of gateways in areas of high gateway density.
+
+    \begin{table}[h]
+      \begin{center}
+        \caption{Number of packets received by n gateways}
+        \begin{tabular}{|c|c|c|c|c|c|c|}
+          \hline
+          Number of Gateways & 1 & 2 & 3 & 4 & 5 & Total \\
+          \hline
+          Number of Packets & 310 & 168 & 111 & 46 & 13 & 648 \\
+          \hline
+        \end{tabular}
+      \end{center}
+      \label{tab:gatewaynums}
+    \end{table}
+
+    \begin{figure}[h]
+    \centering
+    \includegraphics[width=12cm]{figures/map_data.png}
+    \caption{Geographical visualization of gathered data}
+    \label{fig:datamap}
+    \end{figure}
+
+
+  \section{Cartesian Coordinates}
+    When working with the TDOA algorithms, it is important that a linear cartesian coordinate system is used, as opposed to the WGS84 latitude and longitude used by the GPS.
+
+    If 3-dimensional positioning was required, latitude, longitude and altitude (LLA) could be converted to the Earth Centred, Earth Fixed (ECEF) frame and vice versa. In this reference frame, the origin is at the centre of the Earth with the x-axis intersecting the Greenwich meridian and the equator, the z-axis being along the spin axis of the Earth and the y-axis being perpendicular to both of these. However, for 3-dimensional position estimates, a minimum of 4 gateways would be required and the effect of altitude is likely to be negligible compared to other sources of error.
+
+    For 2-dimensional positioning, a local grid reference frame can be used. Latitude and longitude can be converted to OSGB36, the British Ordnance Survey National Grid reference system, and vice versa, through a number of calculations and adjustments detailed in OSTN02 \cite{OSTN02}. The resulting cartesian coordinates are in metres and also allow for easy plotting of the hyperbolic equations and position estimates. When positioning errors and distances are given, it is simply the euclidean distance between two sets of (x,y) coordinates in metres.
+
+
+
+
+
 \chapter{Conclusion}
+
+  Since only 50\% of packets were received by 3 or more gateways and a further x\% were rejected, leaving only y\% of packets with location estimates, it is clear that the LoRaWAN network used is not ideal for positioning. However, it is important to note this is a relatively new network and that with a broader spread of gateways, these numbers are likely to be greatly improved. It should also be noted that investigating the number of receiving gateways and distance from gateways was not a primary aim and ideally more data representing a greater geographical spread around the network's gateways would be collected.
 
 
 
