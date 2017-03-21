@@ -19,8 +19,14 @@
 % This package allows the use of $ \text{} $
 \usepackage{amsmath}
 
+% SI Units, micro etc
+\usepackage{siunitx}
+
+% Allows subfigures
+\usepackage{subcaption}
+
 % The document title and author
-\title{Multilateration based system for localization of nodes with LoRaWAN}
+\title{Multilateration-based localization of nodes\\within a LoRaWAN network}
 \author{Daniel Saul\\University College London\\ \\Supervisor: Dr Miguel Rio}
 
 % Document header
@@ -57,6 +63,8 @@
 
   \section{LoRaWAN}
     \subsection{Things Connected}
+
+
 
   \section{Motivations}
 
@@ -117,7 +125,7 @@
 
 \chapter{Data Analysis \& Results}
 
-  In this chapter, the gathered data and the various transformations, algorithms and analytics carried out will be presented alongside the final positioning errors obtained.
+  In this chapter, the gathered data and the various transformations, algorithms and analytics carried out will be presented alongside the final positioning errors obtained. All investigations were programmed in Python and carried out in an iPython Jupyter notebook.
 
   \section{Gathered Data}
 
@@ -125,9 +133,12 @@
 
     Figure \ref{fig:datamap} provides a geographical visualization of the data. The location of each gateway that received a packet is shown in blue, the true location of packets received by less than 3 gateways are shown in red and the true location of packets received by 3 or more gateways are shown in green. With a cursory glance, it can be seen that generally more packets are received by higher numbers of gateways in areas of high gateway density.
 
-    \begin{table}[h]
+    Taking a closer look at the received data, each gateway provides the latitude, longitude and altitude of its position and a timestamp with microsecond precision. Since the position coordinates for each gateway vary between packets, it would seem that for every packet received, a new location is retrieved from the GPS. It is unknown whether the timestamp is also retrieved live from the GPS, or from an internal clock. Either way, microsecond precision is not ideal bearing in mind that \SI{1}{\micro\second} is equivalent to 300 metres in distance. This also means it is unlikely the timestamping occurs at the instant a packet is first received.
+
+    \begin{table}[ht]
       \begin{center}
         \caption{Number of packets received by n gateways}
+        \label{tab:gatewaynums}
         \begin{tabular}{|c|c|c|c|c|c|c|}
           \hline
           Number of Gateways & 1 & 2 & 3 & 4 & 5 & Total \\
@@ -136,12 +147,11 @@
           \hline
         \end{tabular}
       \end{center}
-      \label{tab:gatewaynums}
     \end{table}
 
-    \begin{figure}[h]
+    \begin{figure}[ht]
     \centering
-    \includegraphics[width=12cm]{figures/map_data.png}
+    \includegraphics[width=15cm]{figures/map_data.png}
     \caption{Geographical visualization of gathered data}
     \label{fig:datamap}
     \end{figure}
@@ -154,13 +164,182 @@
 
     For 2-dimensional positioning, a local grid reference frame can be used. Latitude and longitude can be converted to OSGB36, the British Ordnance Survey National Grid reference system, and vice versa, through a number of calculations and adjustments detailed in OSTN02 \cite{OSTN02}. The resulting cartesian coordinates are in metres and also allow for easy plotting of the hyperbolic equations and position estimates. When positioning errors and distances are given, it is simply the euclidean distance between two sets of (x,y) coordinates in metres.
 
+  \section{Received Signal Strength}
+
+    The Received Signal Strength Indicator (RSSI) has already been discounted as a viable method of positioning due to the broad number of factors involved of which distance is only one. Figure \ref{fig:rssidistance} plots the RSSI of each packet received by each gateway against the distance from the transmission to the gateway. Whilst it can be seen that there is a relationship, the large variance of RSSI for any distance, particularly at the lower end, makes it unusable for positioning on its own.
+
+    \begin{figure}[ht]
+    \centering
+    \includegraphics[width=15cm]{figures/rssidistance.png}
+    \caption{Relationship between RSSI and distance from gateway}
+    \label{fig:rssidistance}
+    \end{figure}
+
+  %\section{Data Cleanup}
+
+  %  It was found after initial investigations and whilst programming Chan's algorithm that there were numerous issues with the data. The first issue is that some packets appeared to be received by one gateway more than once with varied receive times. Whether this is due to an issue with the particular gateway, or its location causing excessive multipath effects is unknown.
+
+  \section{Chan's Algorithm}
+
+    Initial investigations were carried out using an implementation of Chan's algorithm \cite{Chan1994}.
+
+    The results of applying Chan's algorithm to the raw data directly, choosing the latter 3 gateways to have received each packet, were disappointing and can be seen in table \ref{tab:chanresults}. Out of 170 possible packets that were received by 3 or more gateways, the algorithm only returned position estimates for 18, or about 11\%. The mean positional error of these when compared to the true locations was 1112 metres.
+
+    When the hyperbolic equations were plotted, it was found that the majority of packets did not have hyperbola that ever intersected or did not have hyperbola that were even valid due to the limited precision of the gateway timestamps. One such instance can seen in figure \ref{fig:hyperbolanointersect}. A limitation of Chan's algorithm is that it calculates exact solutions to the hyperbolic equations, so in all these instances where no exact solutions exist it was unable to provide a result.
+
+    \begin{figure}[ht]
+    \centering
+    \includegraphics[width=10cm]{figures/hyperbolanointersect.png}
+    \caption{Geographical plot of packet with non-intersecting hyperbola}
+    \label{fig:hyperbolanointersect}
+    \end{figure}
+
+    \begin{table}[ht]
+      \begin{center}
+        \caption{Results of Chan's algorithm}
+        \label{tab:chanresults}
+        \begin{tabular}{|c|c|c|c|c|c|c|}
+          \hline
+           & Resolvable Packets & Mean Error & Median Error & Standard Deviation \\
+          \hline
+          Raw Data & 10.6\% & 1112m & 882m & 671m \\
+          \hline
+          Offsets & 17.0\% & 38,810m & 903m & 110,200m \\
+          \hline
+          Offsets (outliers removed) & 14.1\% & 866m & 642m & 767m \\
+          \hline
+        \end{tabular}
+      \end{center}
+    \end{table}
+
+  \section{Offsets}
+
+    In an attempt to improve the initial results achieved with Chan's algorithm, both in terms of the number of packets with a solution and in terms of the positional error, it was theorized that each gateway may have a timing offset associated with it which could be corrected for. Offsets cannot be calculated for each gateway individually since we are using TDOA and do not have an exact transmit time, but offsets for pairs of gateways can be found.
+
+    The offset of a pair of gateways, i and j, is shown in equation \ref{eq:offset}. The result of the difference of the euclidean distances from the true position of the packet, \(d_i - d_j\), divided by the speed of light, C, is what the time difference of arrival should be. Therefore the difference of this value and the TDOA, \(t_i - t_j\), provides a time offset for that pair of gateways.
+
+    \begin{equation}
+    \label{eq:offset}
+    offset_{ij} = (\frac{d_i - d_j}{C}) - (t_i - t_j)
+    \end{equation}
+
+    The offset is calculated for every possible pair of gateways for every packet. The probability density function (PDF) for these offsets is shown in figure \ref{fig:offsetpdf} and it can be seen that they are quite varied, with the majority of values within \SI{10}{\micro\second} and the mean at \SI{3.58}{\micro\second}. In terms of distance, that is a mean offset of over 1km.
+
+    \begin{figure}[ht]
+    \centering
+    \includegraphics[width=12cm]{figures/offsetpdf.png}
+    \caption{Probability Density Function for all calculated offsets}
+    \label{fig:offsetpdf}
+    \end{figure}
+
+    \begin{figure}[ht]
+    \centering
+    \begin{subfigure}[b]{7cm}
+        \includegraphics[height=5cm]{figures/offsetsall.png}
+        \caption{All gateway pairs}
+        \label{fig:offsetboxesa}
+    \end{subfigure}
+    ~
+    \begin{subfigure}[b]{7cm}
+        \includegraphics[height=5cm]{figures/offsetssmall.png}
+        \caption{Gateway pairs with \si{\micro\second} offsets}
+        \label{fig:offsetboxesb}
+    \end{subfigure}
+    \caption{Mean and Standard Deviations of Calculated Offsets} \label{fig:offsetboxes}
+    \end{figure}
+
+    Of greater significance are the spread of values for each individual pairing, shown in figures \ref{fig:offsetboxesa} and \ref{fig:offsetboxesb}. \ref{fig:offsetboxesa} shows that some pairings have mean offsets of as high as 0.06s, which would cause significant errors in positioning and likely cause no solution to be found at all. \ref{fig:offsetboxesb} narrows down to those pairings with offsets in the microsecond range and allows the standard deviation bars to be seen. These show that the offsets are not particularly constant for most pairings, perhaps suggesting that other factors are involved such as multipath and non-line-of-sight effects or just that the gateways do not assign a timestamp in a particularly controlled way.
+
+    Applying these mean offsets to the TDOAs before using Chan's algorithm results in slight improvements with a solution for 17\% of packets, shown in row 2 of table \ref{tab:chanresults}. Due to clear outliers however, resulting in solutions tens of kilometres from the gateways, the mean positional error is almost 40km but with a median of only 903m. Removing these outliers gives solutions for about 14\% of packets with a mean positional error of 866m, shown in row 3 of table \ref{tab:chanresults}, down from an error of 1112m without applying offsets.
+
+
+  \section{Iterative Algorithm}
+
+    Even with the addition of offsets, Chan's algorithm severely limits the number of resolvable packets. Ideally an approximate solution is needed in the cases when the hyperbolic equations do not intersect and this is provided by utilizing an iterative algorithm rather than a closed. With the implementation of a least squares based iterative algorithm, an exact solution does not need to exist. In addition, all the data in over-determined situations can more easily be used, potentially improving the estimation accuracy - i.e. when there are more than 3 gateways that have received a packet and thus more TDOA equations than there are unknown coordinates. Being an iterative algorithm, an initial estimate is required and the further the estimate from the true solution, the more iterations it will take to converge on a solution. To keep processing times down, a limit on the number of iterations will normally be set and so ideally the initial estimate will be set to be as close to the solution as possible. With trial and error of several potential initial estimates, including using the origin (0,0) and the result of the previous estimate, it was found that using the position of the first receiving gateway minimized the number of packets which did not converge. The only other possible disadvantage of an iterative technique compared to a closed form algorithm such as Chan is the processing time - however, the processing is being performed on the server-side rather than an embedded device and so this an inconsequential issue.
+
+    When the iterative algorithm was run on the raw data, the results were immediately an improvement with a solution returned for about 44\% of packets that were received by three or more gateways, compared to 14\% with reasonable error for Chan's algorithm. As shown in row 1 of table \ref{tab:iterresults}, the mean positional error achieved was 972m, a similar figure to Chan's.
+
+    Since all receiving gateways are taken into account using the iterative algorithm, improvements were found by rejecting outliers in the receiving gateway timestamps. Erroneous times that would clearly put the node beyond the reach of the network were rejected, resulting in solutions for over 58\% of packets with a mean positional error of just over 1km, shown in row 2 of table \ref{tab:iterresults}. By also applying the offsets for gateway pairs before using the iterative algorithm, solutions were found for about 55\% of packets with a mean positional error of 930m and a lower standard deviation of 557m, shown in row 3 of table \ref{tab:iterresults}.
+
+    \begin{table}[ht]
+      \begin{center}
+        \caption{Results of Iterative algorithm}
+        \label{tab:iterresults}
+        \begin{tabular}{|c|c|c|c|c|c|c|}
+          \hline
+           & Resolvable Packets & Mean Error & Median Error & Standard Deviation \\
+          \hline
+          Raw Data & 44.1\% & 972m & 850m & 614m \\
+          \hline
+          Raw Data (reject outliers) & 58.2\% & 1080m & 929m & 716m \\
+          \hline
+          Offsets & 55.3\% & 930m & 863m & 557m \\
+          \hline
+        \end{tabular}
+      \end{center}
+    \end{table}
+
+    To better visualize the positional error, \ref{fig:iterrorpdf} plots the probability density function for the iterative algorithm with offsets applied. Whilst the mean error is just under 1km, the variability of the positional error is large with errors as great as 3km occurring. Precise and reliable positioning would therefore appear to be beyond the scope of the current network, but a rough position over a broad city scenario can certainly be achieved.
+
+    \begin{figure}[ht]
+    \centering
+    \includegraphics[width=12cm]{figures/iterativeoffseterrorpdf.png}
+    \caption{Probability Density Function for Positional Error using Iterative Algorithm with Offsets}
+    \label{fig:iterrorpdf}
+    \end{figure}
+
+
+  \section{Oversampling}
+
+    Lastly, oversampling was employed in an attempt to improve the positional accuracy and reduce noise. With the test node stationary at one location known to be picked up by multiple gateways, a large number of transmissions were made. Two methods were considered to test the viability of oversampling, the first being to calculate every possible TDOA and find the mean for each gateway pair to achieve a higher resolution time difference. The second was to find an estimated location for every packet and take the mean of the coordinates as the final estimate. This latter method was chosen as simpler and likely to produce similar results.
+
+    \begin{table}[ht]
+      \begin{center}
+        \caption{Results of Oversampling with Iterative algorithm}
+        \label{tab:osresults}
+        \begin{tabular}{|c|c|c|>{\bfseries}c|}
+          \hline
+           & Resolvable Packets & Mean Error &  Final Estimate Error \\
+          \hline
+          Data & 29\% & 1196m & 467m \\
+          \hline
+          Data (reject outliers) & 64\% & 1198m & 392m \\
+          \hline
+        \end{tabular}
+      \end{center}
+    \end{table}
+
+    Running the iterative algorithm on each individual packet received from the location resulted in a mean positional error of almost 1.2km with only 29\% of packets achieving a solution. However, the mean location calculated from the set of estimated coordinates achieved a far lower positional error of just 467m, shown in row 1 of table \ref{tab:osresults}.
+
+    Running the algorithm again whilst rejecting outliers resulted in a mean positional error of almost 1.2km but with 64\% of packets achieving a solution. With more packets therefore being using to estimate the final location, a positional error of 392m is found, shown in row 2 of table \ref{tab:osresults}. These results are visualized in figure \ref{fig:oversampleplot}, where the individual location estimates can be seen with the final estimated location in green and true location in blue.
+
+    Whilst these results are promising and more accurate than estimating locations based on an individual transmission, this method is likely only suitable for use on stationary nodes. Whilst transmitting multiple packets in bursts is possible, it is undesirable both due to power constraints and sharing use of the network amongst potentially large numbers of other nodes. In reality, any oversampling of location will happen over longer periods of time, reducing usefulness for moving nodes which are the primary use case for positioning.
+
+    \begin{figure}[ht]
+    \centering
+    \includegraphics[width=16cm]{figures/oversampleplot.png}
+    \caption{Geographical plot of oversampling with iterative algorithm}
+    \label{fig:oversampleplot}
+    \end{figure}
+
 
 
 
 
 \chapter{Conclusion}
 
-  Since only 50\% of packets were received by 3 or more gateways and a further x\% were rejected, leaving only y\% of packets with location estimates, it is clear that the LoRaWAN network used is not ideal for positioning. However, it is important to note this is a relatively new network and that with a broader spread of gateways, these numbers are likely to be greatly improved. It should also be noted that investigating the number of receiving gateways and distance from gateways was not a primary aim and ideally more data representing a greater geographical spread around the network's gateways would be collected.
+  Since only 50\% of packets were received by 3 or more gateways and a further x\% were rejected, leaving only y\% of packets with location estimates, it is clear that the LoRaWAN network used is not ideal for positioning. However, it is important to note this is a relatively new network and that with a broader spread of gateways, these numbers are likely to be greatly improved. It should also be noted that investigating the number of receiving gateways and distance from gateways was not a primary aim and ideally more data representing a greater geographical spread around the network's gateways would be collected and thus the reliability of these statistics improved.
+
+  Ideally offsets need to be calculated on LOS only transmissions, in a large open space. Quantify the effects of NLOS/multipath. Also, cross validation should be performed with a larger dataset, else overfitting of offsets to dataset - particularly in case of gateway pairings with only a few transmissions, or even just one transmission, *optimistically biased*.
+
+  Iterative algorithm better than closed form for such unreliable, unprecise data. Might be better algorithms than least squares though? Kalman?
+
+  Indoor, short range, precise not possible with current hardware.
+
+  Future: design own gateways with proper, accurate, precise timestamping! Gateways calculate offset from one another
+  Combine RSSI and TDOA???   Machine learning due to noisy NLOS environment??
+
+  MORE GATEWAYS, MORE WIDELY SPREAD - more chance of LOS / closer to LOS, and more 3+ gateways
 
 
 
@@ -202,6 +381,7 @@
       \begin{table}
       \begin{center}
       \caption{Predicted and measured beam deflections}
+      \label{fig:myt}
       \begin{tabular}{|c|c|c|c|}
   	\hline
   	Thing & thing & thing & thing \\
@@ -210,7 +390,7 @@
   	\hline
       \end{tabular}
       \end{center}
-      \label{fig:myt}
+
       \end{table}
 
 
@@ -227,5 +407,6 @@
   \section{Python Fetch Script} \label{ap:serverfetch}
   \section{Python Processing Script} \label{ap:serverprocess}
   \section{Python Export Script} \label{ap:serverexport}
+
 
 \end{document}
