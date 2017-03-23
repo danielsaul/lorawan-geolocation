@@ -57,31 +57,89 @@
 
 \chapter{Introduction}
 
-  The Internet of Things (IoT) is one of the most hyped of technology buzzwords at the moment but the term was coined as long ago as 1999 by Kevin Ashton. Back then, all data on the internet was generated or uploaded by humans, whether text, images or information. But Ashton envisioned a future of computer systems generating and collating data on their own, with little to no input from us. Today we are in the situation where
+  The Internet of Things (IoT) is currently one of the most hyped of technology areas but the term was coined as long ago as 1999 by Kevin Ashton. Back then, all data on the internet was generated or uploaded by humans, whether text, images or information. But Ashton envisioned a future of computer systems generating and collating data on their own, with little to no input from us. Today we are in the situation where
 
   \section{Low Power Wide Area Networks}
 
-  \section{LoRaWAN}
-    \subsection{Things Connected}
+  \section{Project}
+    \subsection{Purpose}
 
+    \subsection{Outline}
 
+\chapter{LoRaWAN}
 
-  \section{Motivations}
-
-  \section{Project Outline}
+  Whilst many LPWANs are currently being introduced, LoRaWAN is one of the most well discussed and explored, likely due to the openness of the standard developed by the LoRa Alliance.
 
 \chapter{Localization}
 
+  In this chapter, various localization techniques will be examined and considered for use in an existing LoRaWAN network. Popular methods include using the Received Signal Strength Indicator (RSSI), Angle of Arrival (AoA), Time of Arrival (TOA) and Time Difference of Arrival (TDOA) of signals. Ultimately the decision is made that Time Difference of Arrival, also known as multilateration, is the only viable option for a number of reasons. However even this will present some hurdles due to limitations of the existing infrastructure with regards to gateway hardware, timing and the urban environment.
+
+  It is important to take a look at the scenario before exploring options. The network is operating in a large urban environment resulting in multipath effects and Non-Line-of-Sight (NLOS) transmissions. Gateways are already in place but not evenly spread. This hardware cannot be altered but the exact locations of the gateways are known and a timestamp is provided for each packet received at each gateway. With regards to nodes, they should also remain low cost and low power, since these are key facets for using an LPWAN, and ideally should require no particular hardware. As discussed in the sections below, these factors all limit the viable options greatly.
+
+  \section{Global Positioning System}
+    The simplest method of adding geolocation capabilities to any device is to utilize a Global Navigation Satellite System (GNSS) such as the commonly known United States Global Positioning System (GPS). Also available and supported by most GPS receivers are the European Galileo system and the Russian GLONASS system. GPS systems can provide a typical resolution of 10 metres, down to just 1 metre in some cases.
+
+    However to use GPS, additional hardware is required on a node which is undesirable. Adding a GPS receiver will add weight and bulk to an otherwise small, lightweight device, requiring another antenna in addition to that for the LoRa transceiver. More importantly, GPS would substantially increase the cost of a node and the power consumption.
+
+    To achieve a positional fix and time, a minimum of four satellites must be visible and this can be limited both outdoors in urban environments and severely limited in any indoor environments. With one of the selling points of LoRaWAN being the deep indoor penetration, this is another disadvantage of a GPS system.
+
+    Since for most IoT and LPWAN use cases, location does not need to be known by the device itself but rather by the network, it makes sense to explore localization techniques based on the network infrastructure with no additional hardware rather than an external solution like GPS.
+
   \section{Received Signal Strength}
+    The signal strength at a receiver is based on the amplitude of the incoming signal. As an electromagnetic signal travels through air or any other material, it is subject to attenuation - simply put, the further the distance travelled, the greater the attenuation. The free space path loss model can be used to describe the relation between transmission power and receive power in a line-of-sight (LOS) scenario.
+
+    Theoretically then, the distance from a transmitter to a receiver can be calculated from the RSSI. With multiple receivers, or gateways, a system of equations can be setup and solved to find the location of the transmitter - effectively the point at which circles extended at a radius of the calculated distance from the receivers intersect one another. This is known as trilateration. However, the received power is also related to other factors, such as antenna gains and the signal wavelength, and affected by many more including NLOS signals, interference, weather, and multipath effects. This results in low accuracy over long distances \cite{Yang:2009}.
+
+    With LoRaWAN in particular, RSSI based positioning has been investigated in an indoor environment and found to give unsatisfactory and noisy results \cite{Henriksson2016}, which would only be amplified in an urban environment. However, encouraging results using RSSI fingerprinting and machine learning techniques for long distance location with Sigfox have recently emerged at the time of writing \cite{Sallouha2017}.
 
   \section{Angle of Arrival}
+    The Angle of Arrival of a signal can be used to estimate the bearing of the transmitter from the receiver. With AoAs from multiple receivers, the location of the transmitter can be estimated as the point at which these bearings intersect. This is also known as triangulation. As few as two receivers are needed to estimate a position in this way and no time synchronization is required between either receivers or transmitter \cite{Krizmant1997}.
+
+    However, AoA techniques require sophisticated antenna arrays on a gateway and still often only provide bearings at a low resolution depending on the size of the array. The Angle of Arrival can also not be relied upon at all in heavily NLOS and multipath environments such as an urban city, where signals are reflected in reaching the gateway and could arrive from any direction \cite{Zimmerman2012}. LoRaWAN gateways only use simple, single antennas to keep them relatively cheap and so this technique is impossible with the current hardware.
 
   \section{Time of Arrival}
+    Using the Time of Arrival of a signal at a receiver is another distance-based trilateration technique like using RSSI. If the time of transmission and time of reception are known, then the propagation time of the signal can be calculated. This is then related to the propagation distance from the transmitter to the receiver by the speed of the signal (approx. \(3*10^8\)\si{\metre\per\second}). Once again, distances from multiple gateways can be formed into a system of equations and solved to find the position of the transmitter.
+
+    However, the important thing to note is the requirement for an accurate timestamps both at transmission and reception. With any timing based technique, high precision measurements are required due to the high propagation speed of the signals - just \SI{1}{\micro\second} difference is 300 metres. Transmitting an accurate timestamp from a node would require an extremely accurate clock source with little drift, which increases both the cost and power consumption. The simplest way to gain an accurate timestamp is from a GPS unit, which if available would clearly negate the requirement for a timestamp entirely.
 
   \section{Time Difference of Arrival}
+    To avoid the need for particular hardware which would compromise the low cost and low power of nodes, the Time Difference of Arrival can be used. TDOA is known as a multilateration technique, whereby the time of transmission is unknown but the time of reception at multiple receivers is known. The difference between the times of arrival at pairs of receivers can be calculated or found from correlation techniques and hyperbolic equations formed as detailed below \cite{Krizmant1997}. The transmitting node is then found to be located at the intersection of the hyperbolic curves. For a 2-dimensional location estimate, times from at least three receivers are required. The accuracy of the position estimate is dependent on the accuracy and precision of the timestamps at the receivers, on which clocks should be synchronized \cite{Li}.
+
     \subsection{TDOA Equations}
+
+      The Time Difference of Arrival of a pair of gateways forms a non-linear hyperbolic equation with two unknowns in the 2-dimensional case: the x and y coordinates of the transmitting node \cite{ElGemayel2013}\cite{Steffes2014}. To solve for x and y, at least two equations are required meaning a minimum of three receiving gateways.
+
+      Letting the unknown position of the node \(p_{node} = (x, y)\) and the known position of the \(i\)th receiving gateway \(p_i = (x_i, y_i)\), the euclidean distance between these is \(D_i = \sqrt{(x - x_i)^2 + (y - y_i)^2}\).
+
+      The difference between the distance to the \(i\)th gateway, \(D_{i}\), and the distance to the \(j\)th gateway, \(D_{j}\), is equal to the difference in arrival times multiplied by the speed of light, \((D_i - D_j) = C\cdot(t_i - t_j)\).
+
+      Therefore the full hyperbolic equation for a pair of gateways, \(i\) and \(j\), is as defined in equation \ref{eq:tdoa}.
+
+      \begin{equation}
+        \label{eq:tdoa}
+        \sqrt{(x - x_i)^2 + (y - y_i)^2} - \sqrt{(x - x_j)^2 + (y - y_j)^2} = C\cdot(t_i - t_j)
+      \end{equation}
+
+      Normally the first gateway to receive the transmission will be used as the \(j\)th gateway to keep the numbers positive and will remain the same in every formed equation, whilst the \(i\)th gateway will change for each subsequent gateway to receive the transmission. This will result in \(n-1\) equations where \(n\) gateways receive the transmission.
+
+      Figure \ref{fig:tdoa} plots the three hyperbolic equations formed from the times of arrivals from four gateways, with the transmission location found at the intersection of the three hyperbola. Having more equations than needed due to additional receiving gateways, such as in this case, is an over-determined situation and can enhance the positional accuracy in the likely event that the timings are inexact.
+
+      \begin{figure}[ht]
+      \centering
+      \includegraphics[width=12cm]{figures/TDOA.png}
+      \caption{TDOA Hyperbola with 4 gateways}
+      \label{fig:tdoa}
+      \end{figure}
+
     \subsection{Hyperbolic Solver Algorithms}
+      The non-linear nature of the set of hyperbolic TDOA equations \ref{eq:tdoa} means it is more difficult to solve for the node position than in trilateration techniques. A number of efficient methods exist that include both iterative and closed form algorithms \cite{ElGemayel2013}. Closed form algorithms are more computationally efficient and directly calculate exact solutions but cannot easily support over-determined situations \cite{Li2011}. Two such algorithms are Fang's \cite{Aatique1997} and Chan's \cite{Chan1994}. Iterative algorithms are popular and can take additional data in over-determined situations, with most based on the theory of least squares \cite{Koks2007}. They begin with an initial guess and improve the guess on each iteration. Gauss Newton is one such algorithm. Kalman filters are also popular methods for solving the set of equations.
+
     \subsection{Problems}
+      Whilst TDOA is the best suited technique for locating using LoRaWAN, it is not without its hurdles \cite{LinkLabs}. One of the biggest is the assumption that there is line of sight between the transmitting node and receiving gateways, which is often unlikely in an urban environment and LoRaWAN is specifically designed to not require line of sight. The consequence is that the propagation time and distance will often be longer than the euclidean distance reducing the accuracy of the estimated location. Methods of reducing the NLOS error and identifying NLOS gateways have been explored \cite{Cong2001} and it is has been suggested that hybrid methods of TDOA with RSSI could be used to reduce the impact of both multipath effects and NLOS \cite{Lategahn2013}\cite{ElGemayel2013a}.
+
+      The issues of timing accuracy have already been discussed and the importance of clock synchronization between gateways is clear. With no control over the existing gateway hardware, this will likely be a limiting factor in the accuracy obtained. Ideally a high resolution timestamp would be generated at the physical layer of the receiver \cite{Li2011}, with accurate clocks synchronized with a GPS reference time pulse. However, work has been carried out on reducing the need for synchronized clocks \cite{Li2014} and solving a set of unsynchronized TDOA measurements \cite{Burgess2014}.
+
+      The last major issue which can limit the positional accuracy is the narrow bandwidth of the LoRa signals \cite{LinkLabs}. The ability to differentiate between two different signals depends on the signal bandwidth, with \(1/B\) giving the multipath resolution. Any signals that do not have a time difference greater than this cannot be differentiated, although there are methods of mitigating this. However with such low resolution and potentially inaccurate timestamps from the gateways, this is unlikely to become relevant with the current infrastructure.
 
 \chapter{Implementation}
 
@@ -125,7 +183,7 @@
 
 \chapter{Data Analysis \& Results}
 
-  In this chapter, the gathered data and the various transformations, algorithms and analytics carried out will be presented alongside the final positioning errors obtained. All investigations were programmed in Python and carried out in an iPython Jupyter notebook.
+  In this chapter, the gathered data and the various transformations, algorithms and analytics carried out will be presented alongside the final positioning errors obtained. All investigations were programmed in Python and carried out in an iPython Jupyter notebook, with plots generated using matplotlib.
 
   \section{Gathered Data}
 
@@ -214,7 +272,7 @@
 
   \section{Offsets}
 
-    In an attempt to improve the initial results achieved with Chan's algorithm, both in terms of the number of packets with a solution and in terms of the positional error, it was theorized that each gateway may have a timing offset associated with it which could be corrected for. Offsets cannot be calculated for each gateway individually since we are using TDOA and do not have an exact transmit time, but offsets for pairs of gateways can be found.
+    In an attempt to improve the initial results achieved with Chan's algorithm, both in terms of the number of packets with a solution and in terms of the positional error, it was theorized that each gateway may have a timing offset associated with it which could be corrected for. This is similar to the Differential TDOA approach \cite{Li2014} which uses a reference node to compensate for imperfect synchronization between gateways. Offsets cannot be calculated for each gateway individually since we are using TDOA and do not have an exact transmit time, but offsets for pairs of gateways can be found.
 
     The offset of a pair of gateways, i and j, is shown in equation \ref{eq:offset}. The result of the difference of the euclidean distances from the true position of the packet, \(d_i - d_j\), divided by the speed of light, C, is what the time difference of arrival should be. Therefore the difference of this value and the TDOA, \(t_i - t_j\), provides a time offset for that pair of gateways.
 
@@ -279,13 +337,13 @@
       \end{center}
     \end{table}
 
-    To better visualize the positional error, \ref{fig:iterrorpdf} plots the probability density function for the iterative algorithm with offsets applied. Whilst the mean error is just under 1km, the variability of the positional error is large with errors as great as 3km occurring. Precise and reliable positioning would therefore appear to be beyond the scope of the current network, but a rough position over a broad city scenario can certainly be achieved.
+    To better visualize the positional error, figure \ref{fig:iterrorcdf} plots the cumulative density function for the iterative algorithm. Whilst the mean error for all three sets of results are around 1km, the variability of the positional error is large with errors as great as 3km occurring. It is seen again that including offsets provides slightly better results, with a 1440m accuracy at 80\% confidence level. The raw data with outliers rejected is interestingly the worst, with 1720m accuracy at 80\% confidence and ordinary raw data at 1510m accuracy - though it must be remembered that the ordinary raw data achieved a lower number of resolvable packets. Ultimately though, all three curves are very similar and so precise and reliable positioning would therefore appear to be beyond the scope of the current network, but a rough position over a broad city scenario can certainly be achieved.
 
     \begin{figure}[ht]
     \centering
-    \includegraphics[width=12cm]{figures/iterativeoffseterrorpdf.png}
-    \caption{Probability Density Function for Positional Error using Iterative Algorithm with Offsets}
-    \label{fig:iterrorpdf}
+    \includegraphics[width=14cm]{figures/iterativecdf.png}
+    \caption{Cumulative Distribution Function for Positional Error using Iterative Algorithm}
+    \label{fig:iterrorcdf}
     \end{figure}
 
 
@@ -340,62 +398,12 @@
   Combine RSSI and TDOA???   Machine learning due to noisy NLOS environment??
 
   MORE GATEWAYS, MORE WIDELY SPREAD - more chance of LOS / closer to LOS, and more 3+ gateways
+  Means can eliminate NLOS gateways or weigh according to reliability \cite{ElGemayel2013}
 
-
-
-
-% Example Chapter for Stuff
-\chapter{Example Chapter}
-
-  \section{Aims}
-  I aim to do things, as shown in equation (\ref{eq:myeq}). I will show how to do this in Section \ref{app}.
-
-  \begin{equation}
-  \label{eq:myeq}
-  f(x) = \dot{x} + B u(t) + C x(x)
-  \end{equation}
-
-
-  \section{Apparatus}
-  \label{app}
-
-  	50\% of my study.
-
-      A diagram of how to set up the apparatus is shown in figure \ref{fig:app}.
-
-      \begin{figure}
-      \centering
-      %\includegraphics[height=5cm]{blank}
-      \caption{Apparatus setup}
-      \label{fig:app}
-      \end{figure}
-
-  \section{Observations}
-
-  %This was demonstrated in \cite{Bonfils2014}.
-
-  \section{Discussion}
-
-      These results can be seen in table \ref{fig:myt}.
-
-      \begin{table}
-      \begin{center}
-      \caption{Predicted and measured beam deflections}
-      \label{fig:myt}
-      \begin{tabular}{|c|c|c|c|}
-  	\hline
-  	Thing & thing & thing & thing \\
-  	\hline
-  	Another & another & another & another \\
-  	\hline
-      \end{tabular}
-      \end{center}
-
-      \end{table}
 
 
 % Bibliography
-\bibliographystyle{unsrt}
+\bibliographystyle{IEEEtran}
 \bibliography{references}
 
 % Appendix
